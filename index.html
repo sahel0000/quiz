@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Algerian Legend Quiz 🇩🇿</title>
+    <style>
+        :root {
+            --green: #006233;
+            --red: #D21034;
+            --white: #FFFFFF;
+            --dark: #121212;
+            --card-bg: #1e1e1e;
+            --transition: all 0.3s ease;
+        }
+
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+
+        body {
+            background-color: var(--dark);
+            color: var(--white);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        /* Language Toggle Button */
+        .lang-switch {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: var(--green);
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+            z-index: 100;
+        }
+
+        #quiz-container {
+            width: 90%;
+            max-width: 500px;
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            text-align: center;
+            border-top: 5px solid var(--green);
+            transition: var(--transition);
+        }
+
+        /* RTL Support Class */
+        .rtl { direction: rtl; text-align: right; }
+        .rtl .option-btn { text-align: right; }
+        .rtl .quiz-header { flex-direction: row-reverse; }
+
+        .progress-container {
+            width: 100%;
+            height: 8px;
+            background: #333;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        #progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(to right, var(--green), var(--white), var(--red));
+            border-radius: 10px;
+            transition: var(--transition);
+        }
+
+        .quiz-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .timer {
+            font-weight: bold;
+            font-size: 1.2rem;
+            padding: 5px 15px;
+            border-radius: 20px;
+            background: #333;
+        }
+
+        .timer.warning { color: var(--red); animation: blink 0.5s infinite; }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        #question-text { font-size: 1.4rem; margin-bottom: 1.5rem; min-height: 3.5rem; }
+
+        .options-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+
+        .option-btn {
+            background: #2a2a2a;
+            color: white;
+            border: 2px solid #444;
+            padding: 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            transition: var(--transition);
+        }
+
+        .option-btn:hover:not([disabled]) { border-color: var(--green); background: #333; }
+        .option-btn.correct { background-color: var(--green) !important; border-color: var(--white); }
+        .option-btn.wrong { background-color: var(--red) !important; border-color: var(--white); animation: shake 0.4s; }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .next-btn, .restart-btn {
+            background: var(--green);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-weight: bold;
+            cursor: pointer;
+            display: none;
+            width: 100%;
+            margin-top: 20px;
+            font-size: 1.1rem;
+        }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <button class="lang-switch" onclick="toggleLanguage()">Switch to العربية</button>
+
+    <div id="quiz-container">
+        <div id="start-screen">
+            <h1 id="ui-title" style="color: var(--green)">🇩🇿 Algerian Legend Quiz</h1>
+            <p id="ui-subtitle">10 Questions • 15s per question</p>
+            <button id="ui-start-btn" class="next-btn" style="display: block;" onclick="startQuiz()">Start Challenge</button>
+        </div>
+
+        <div id="quiz-screen" class="hidden">
+            <div class="progress-container"><div id="progress-bar"></div></div>
+            <div class="quiz-header">
+                <span id="question-counter">Question 1/10</span>
+                <div class="timer" id="timer">15</div>
+            </div>
+            <h2 id="question-text">Question text</h2>
+            <div class="options-grid" id="options-container"></div>
+            <button id="next-btn" class="next-btn" onclick="handleNext()">Next ➜</button>
+        </div>
+
+        <div id="result-screen" class="hidden">
+            <h2 id="result-emoji">🔥</h2>
+            <p id="result-message"></p>
+            <p id="final-score"></p>
+            <button id="ui-retry-btn" class="restart-btn" style="display: block;" onclick="location.reload()">Try Again</button>
+        </div>
+    </div>
+
+    <script>
+        let currentLang = 'en';
+        
+        const translations = {
+            en: {
+                title: "🇩🇿 Algerian Legend Quiz",
+                subtitle: "10 Questions • 15s per question",
+                startBtn: "Start Challenge",
+                nextBtn: "Next Question ➜",
+                retryBtn: "Try Again",
+                qCount: "Question",
+                legend: "🔥 You are a true Algerian legend!",
+                needsWork: "😅 You need to know Algeria more!",
+                langBtn: "Switch to العربية",
+                scoreText: "Score"
+            },
+            ar: {
+                title: "🇩🇿 تحدي أساطير الجزائر",
+                subtitle: "10 أسئلة • 15 ثانية لكل سؤال",
+                startBtn: "ابدأ التحدي",
+                nextBtn: "السؤال التالي ➜",
+                retryBtn: "إعادة المحاولة",
+                qCount: "السؤال",
+                legend: "🔥 أنت أسطورة جزائرية حقيقية!",
+                needsWork: "😅 تحتاج لمعرفة الجزائر أكثر!",
+                langBtn: "Switch to English",
+                scoreText: "النتيجة"
+            }
+        };
+
+        const questions = [
+            { 
+                en: { q: "Which city is known as 'El Bahia'?", a: "Oran", o: ["Algiers", "Oran", "Constantine", "Annaba"] },
+                ar: { q: "أي مدينة تلقب بـ 'الباهية'؟", a: "وهران", o: ["الجزائر العاصمة", "وهران", "قسنطينة", "عنابة"] }
+            },
+            { 
+                en: { q: "In which year did Algeria gain its independence?", a: "1962", o: ["1954", "1960", "1962", "1965"] },
+                ar: { q: "في أي سنة استقلت الجزائر؟", a: "1962", o: ["1954", "1960", "1962", "1965"] }
+            },
+            { 
+                en: { q: "Which pasta dish is famous in Algiers?", a: "Rechta", o: ["Couscous", "Chakhchoukha", "Rechta", "Trida"] },
+                ar: { q: "ما هي العجائن المشهورة في العاصمة؟", a: "رشتة", o: ["كسكس", "شخشوخة", "رشتة", "تريدة"] }
+            },
+            { 
+                en: { q: "Top scorer for the National Team?", a: "Islam Slimani", o: ["Riyad Mahrez", "Rabah Madjer", "Islam Slimani", "Bounedjah"] },
+                ar: { q: "من هو الهداف التاريخي للمنتخب الوطني؟", a: "إسلام سليماني", o: ["رياض محرز", "رابح ماجر", "إسلام سليماني", "بونجاح"] }
+            },
+            { 
+                en: { q: "Constantine is famous for its...?", a: "Bridges", o: ["Bridges", "Forests", "Beaches", "Deserts"] },
+                ar: { q: "بماذا تشتهر مدينة قسنطينة؟", a: "الجسور المعلقة", o: ["الجسور المعلقة", "الغابات", "الشواطئ", "الصحراء"] }
+            },
+            { 
+                en: { q: "Score of Algeria vs West Germany in 1982?", a: "2-1", o: ["1-0", "2-1", "0-0", "3-2"] },
+                ar: { q: "ما هي نتيجة مباراة الجزائر ضد ألمانيا الغربية 1982؟", a: "2-1", o: ["1-0", "2-1", "0-0", "3-2"] }
+            },
+            { 
+                en: { q: "Where is the Roman city Timgad located?", a: "Batna", o: ["Setif", "Batna", "Guelma", "Tipaza"] },
+                ar: { q: "أين تقع مدينة تيمقاد الأثرية؟", a: "باتنة", o: ["سطيف", "باتنة", "قالمة", "تيبازة"] }
+            },
+            { 
+                en: { q: "Main ingredient of Chakhchoukha?", a: "Torn flatbread", o: ["Rice", "Semolina Pearls", "Torn flatbread", "Chickpeas"] },
+                ar: { q: "ما هو المكون الأساسي للشخشوخة؟", a: "رقاق مقطع", o: ["أرز", "بركوكس", "رقاق مقطع", "حمص"] }
+            },
+            { 
+                en: { q: "Who is the 'King of Rai'?", a: "Khaled", o: ["Cheb Mami", "Khaled", "Cheb Hasni", "Idir"] },
+                ar: { q: "من هو الملقب بـ 'ملك الراي'؟", a: "خالد", o: ["شاب مامي", "خالد", "شاب حسني", "إيدير"] }
+            },
+            { 
+                en: { q: "Highest mountain peak in Algeria?", a: "Mount Tahat", o: ["Djurdjura", "Mount Tahat", "Lalla Khedidja", "Atlas"] },
+                ar: { q: "ما هي أعلى قمة جبلية في الجزائر؟", a: "جبل تاهات", o: ["جرجرة", "جبل تاهات", "لالة خديجة", "الأطلس"] }
+            }
+        ];
+
+        let currentIdx = 0, score = 0, timeLeft = 15, timerInterval;
+
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(freq) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.5);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.5);
+        }
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'en' ? 'ar' : 'en';
+            const container = document.getElementById('quiz-container');
+            
+            if(currentLang === 'ar') {
+                container.classList.add('rtl');
+            } else {
+                container.classList.remove('rtl');
+            }
+
+            // Update UI Labels
+            document.querySelector('.lang-switch').innerText = translations[currentLang].langBtn;
+            document.getElementById('ui-title').innerText = translations[currentLang].title;
+            document.getElementById('ui-subtitle').innerText = translations[currentLang].subtitle;
+            document.getElementById('ui-start-btn').innerText = translations[currentLang].startBtn;
+            document.getElementById('ui-retry-btn').innerText = translations[currentLang].retryBtn;
+            document.getElementById('next-btn').innerText = translations[currentLang].nextBtn;
+
+            if(!document.getElementById('quiz-screen').classList.contains('hidden')) {
+                renderCurrentQuestion();
+            }
+        }
+
+        function startQuiz() {
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('quiz-screen').classList.remove('hidden');
+            showQuestion();
+        }
+
+        function showQuestion() {
+            resetState();
+            renderCurrentQuestion();
+            startTimer();
+        }
+
+        function renderCurrentQuestion() {
+            const qData = questions[currentIdx][currentLang];
+            document.getElementById('question-text').innerText = qData.q;
+            document.getElementById('question-counter').innerText = `${translations[currentLang].qCount} ${currentIdx + 1}/10`;
+            document.getElementById('progress-bar').style.width = `${((currentIdx + 1) / 10) * 100}%`;
+            
+            const container = document.getElementById('options-container');
+            container.innerHTML = '';
+            qData.o.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.innerText = opt;
+                btn.classList.add('option-btn');
+                btn.onclick = () => selectAnswer(btn, qData.a);
+                container.appendChild(btn);
+            });
+        }
+
+        function startTimer() {
+            timeLeft = 15;
+            document.getElementById('timer').innerText = timeLeft;
+            document.getElementById('timer').classList.remove('warning');
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                document.getElementById('timer').innerText = timeLeft;
+                if(timeLeft <= 5) document.getElementById('timer').classList.add('warning');
+                if(timeLeft <= 0) { clearInterval(timerInterval); autoFail(); }
+            }, 1000);
+        }
+
+        function selectAnswer(btn, correct) {
+            clearInterval(timerInterval);
+            document.querySelectorAll('.option-btn').forEach(b => {
+                b.disabled = true;
+                if(b.innerText === correct) b.classList.add('correct');
+            });
+
+            if(btn.innerText === correct) {
+                playSound(600);
+                score++;
+            } else {
+                btn.classList.add('wrong');
+                playSound(200);
+            }
+            document.getElementById('next-btn').style.display = 'block';
+        }
+
+        function autoFail() {
+            const correct = questions[currentIdx][currentLang].a;
+            document.querySelectorAll('.option-btn').forEach(b => {
+                b.disabled = true;
+                if(b.innerText === correct) b.classList.add('correct');
+            });
+            document.getElementById('next-btn').style.display = 'block';
+        }
+
+        function handleNext() {
+            currentIdx++;
+            if(currentIdx < 10) showQuestion();
+            else showResults();
+        }
+
+        function resetState() {
+            document.getElementById('next-btn').style.display = 'none';
+            clearInterval(timerInterval);
+        }
+
+        function showResults() {
+            document.getElementById('quiz-screen').classList.add('hidden');
+            document.getElementById('result-screen').classList.remove('hidden');
+            document.getElementById('final-score').innerText = `${translations[currentLang].scoreText}: ${score}/10`;
+            
+            const msg = document.getElementById('result-message');
+            const emoji = document.getElementById('result-emoji');
+            if(score > 5) {
+                emoji.innerText = "🔥";
+                msg.innerText = translations[currentLang].legend;
+            } else {
+                emoji.innerText = "😅";
+                msg.innerText = translations[currentLang].needsWork;
+            }
+        }
+    </script>
+</body>
+</html>
